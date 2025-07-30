@@ -33,6 +33,8 @@ def main():
     - Execute Python files whith optional arguments
 
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+    
+    When you write or overwrite files, explain always what you do and why.
     """
 
     api_key = os.environ.get("GEMINI_API_KEY")

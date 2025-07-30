@@ -35,6 +35,7 @@ def main():
     All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
     
     When you write or overwrite files, explain always what you do and why.
+    When are you asked to debug the code, try to find the errors inside existing code and fix them, using comments to document changes. Write a brand new file only as a last option.
     """
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -51,10 +52,10 @@ def main():
 
     messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)]),]
     
-    MAX_LOOP = 20
+    max_loop = os.environ.get("MAX_LOOP")
     iteration = 0
 
-    while iteration < MAX_LOOP:
+    while iteration < max_loop:
         try:
             response = client.models.generate_content(
             model='gemini-2.0-flash-001', 

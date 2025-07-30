@@ -49,27 +49,55 @@ def main():
 
     messages = [types.Content(role="user", parts=[types.Part(text=user_prompt)]),]
     
-    response = client.models.generate_content(
-    model='gemini-2.0-flash-001', 
-    contents=messages,
-    config=types.GenerateContentConfig(
-        tools=[available_functions], system_instruction=system_prompt
-        ),
-    )
-    
-    if verbose:
-        print(f"User prompt: {user_prompt}")
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
-    if response.function_calls:
-        for f in response.function_calls:
-            function_call_result = call_function(f, verbose)
-            if not function_call_result.parts[0].function_response.response:
-                raise Exception ('Fatal Error during function call')
-            elif verbose:
-                print(f"-> {function_call_result.parts[0].function_response.response}")
-    else:
-        print(response.text)
+    MAX_LOOP = 20
+    iteration = 0
+
+    while iteration < MAX_LOOP:
+        try:
+            response = client.models.generate_content(
+            model='gemini-2.0-flash-001', 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+                ),
+            )
+
+            for candidate in response.candidates:
+                messages.append(candidate.content)
+
+            if verbose:
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+            
+            has_function_calls = False
+            for candidate in response.candidates:
+                for part in candidate.content.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        has_function_calls = True
+                        function_call_result = call_function(part.function_call, verbose)
+                        actual_result = function_call_result.parts[0].function_response.response
+
+                        if not actual_result:
+                            raise Exception ('Fatal Error during function call')
+                        
+                        if verbose:
+                            print(f"-> {actual_result}")
+                        
+                        tool_message = types.Content(
+                            role="model", 
+                            parts=[types.Part(text=str(actual_result))]
+                        )
+                        messages.append(tool_message)
+                    
+            if not has_function_calls:
+                if response.text:
+                    print(response.text)
+                    break
+            iteration +=1
+
+        except Exception as e:
+            print(f'Error encountered: {e}')
+            break  
 
 
 def call_function(function_call_part, verbose=False):
